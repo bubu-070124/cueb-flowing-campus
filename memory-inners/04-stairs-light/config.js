@@ -4,7 +4,7 @@
  */
 export const CONFIG = {
   image: {
-    src: './stairs-light.jpg',
+    src: '../../assets/optimized/stairs-light.webp',
     sampleWidth: 454,
     sampleHeight: 560,
     fieldPitch: -0.34,

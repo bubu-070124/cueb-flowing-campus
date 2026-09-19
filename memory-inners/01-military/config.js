@@ -4,7 +4,7 @@
  */
 export const CONFIG = {
   image: {
-    src: './military.jpg',
+    src: '../../assets/optimized/military.webp',
     sampleWidth: 436,
     sampleHeight: 582,
     fieldPitch: -0.28,
