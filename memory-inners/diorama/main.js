@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { architecturalMaterial, addSkyEnvironment, detailedTree } from './materials.js';
 
 const canvas=document.getElementById('scene');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:'high-performance'});
@@ -15,7 +16,7 @@ const scene=new THREE.Scene();
 scene.fog=new THREE.Fog(0xa8bdc0,150,280);
 
 const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,.1,500);
-const homePosition=new THREE.Vector3(86,56,112);
+const homePosition=new THREE.Vector3(62,35,104);
 camera.position.copy(homePosition);
 const controls=new OrbitControls(camera,renderer.domElement);
 controls.target.set(0,10,-7);
@@ -30,11 +31,13 @@ controls.autoRotate=true;
 controls.autoRotateSpeed=.45;
 controls.update();
 
-scene.add(new THREE.HemisphereLight(0xe8f5ff,0x5c4937,2.25));
-const sun=new THREE.DirectionalLight(0xffead1,4.4);
+scene.add(new THREE.HemisphereLight(0xe8f5ff,0x5c4937,.8));
+addSkyEnvironment(renderer,scene);
+const sun=new THREE.DirectionalLight(0xfff2dc,3.1);
 sun.position.set(-65,100,80);
 sun.castShadow=true;
 sun.shadow.mapSize.set(2048,2048);
+sun.shadow.normalBias=.045;
 sun.shadow.camera.left=-100;
 sun.shadow.camera.right=100;
 sun.shadow.camera.top=100;
@@ -98,6 +101,12 @@ const materials={
   base:new THREE.MeshStandardMaterial({color:0x5e5850,roughness:.88,metalness:.04})
 };
 const edges=[];
+materials.crimson=architecturalMaterial('brick','#79504c');
+materials.concrete=architecturalMaterial('stone','#b3afa2');
+materials.concreteDark=architecturalMaterial('stone','#8e8b80');
+materials.plaza=architecturalMaterial('stone','#b8b5aa');
+materials.window.color.set('#7a9dad');materials.window.emissiveIntensity=0;materials.window.roughness=.18;materials.window.metalness=.3;
+materials.glass.color.set('#a0b6bf');materials.glass.emissiveIntensity=0;
 let solidCount=0;
 
 function finishMesh(mesh,outline=true){
@@ -106,7 +115,7 @@ function finishMesh(mesh,outline=true){
   model.add(mesh);
   solidCount++;
   if(outline){
-    const line=new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry,28),new THREE.LineBasicMaterial({color:0x2a2522,transparent:true,opacity:.15}));
+    const line=new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry,28),new THREE.LineBasicMaterial({color:0x2a2522,transparent:true,opacity:0}));
     line.position.copy(mesh.position);
     line.rotation.copy(mesh.rotation);
     line.scale.copy(mesh.scale);
@@ -143,18 +152,16 @@ function framedWindow(x,y,z,w=3.7,h=2.2){
   box(.16,h+.16,.32,x-w/2-.08,y,z+.34,materials.frame,false);
   box(.16,h+.16,.32,x+w/2+.08,y,z+.34,materials.frame,false);
   box(.11,h,.36,x,y,z+.37,materials.frame,false);
+  box(w,.08,.36,x,y+.15,z+.38,materials.frame,false);
+  box(w+.5,.18,.8,x,y-h/2-.2,z+.45,materials.concrete,false);
+  for(const side of [-1,1]){
+    box(.95,h+.35,.14,x+side*(w/2+.7),y,z+.15,materials.frame,false);
+    for(let slat=0;slat<12;slat++)box(.9,.055,.19,x+side*(w/2+.7),y-h/2+slat*h/11,z+.26,materials.concreteDark,false);
+  }
 }
 
 function addTree(x,z,height=15,scale=1){
-  cylinder(.62*scale,height,x,height/2,z,materials.trunk,20);
-  const foliage=[[0,0,0],[2.5,0,-.4],[-2.3,.2,.5],[.4,2.4,.3],[1.1,1.1,1.8],[-1.2,1.2,-1.7],[2,1.5,1.1],[-2,1.6,1.2]];
-  foliage.forEach(([dx,dy,dz],index)=>{
-    const radius=(index<4?3.2:2.45+(index%2)*.35)*scale;
-    const mesh=new THREE.Mesh(new THREE.SphereGeometry(radius,18,12),index===3?materials.leafLight:materials.leaf);
-    mesh.scale.set(1,1.08,.94);
-    mesh.position.set(x+dx*scale,height-1.3+dy*scale,z+dz*scale);
-    finishMesh(mesh,false);
-  });
+  detailedTree(THREE,model,x,z,height,scale);
 }
 
 const plinth=new THREE.Mesh(new THREE.CylinderGeometry(73,78,5.5,72),materials.base);
@@ -164,13 +171,13 @@ box(132,1.1,94,0,-.25,-1,materials.plaza,true);
 const grid=new THREE.GridHelper(126,18,0x846f5d,0x846f5d);
 grid.position.set(0,.32,4);
 grid.material.transparent=true;
-grid.material.opacity=.16;
+grid.material.opacity=0;
 model.add(grid);
 
 // shortcut: photo-matched concept massing, replace with measured/multi-view capture for survey accuracy.
 box(66,30,20,4,15,-31,materials.concrete,true);
 box(54,20,2,0,20,-20,materials.crimson,true);
-box(11,33,22,7,16.5,-30,materials.concreteDark,true);
+box(11,33,22.5,7,16.5,-30,materials.concreteDark,true);
 box(14,6,3,7,4,-18.8,materials.deepRed,true);
 box(5,5.2,1,3.8,4,-17.25,materials.glass,false);
 box(5,5.2,1,10.2,4,-17.25,materials.glass,false);
@@ -186,14 +193,8 @@ for(let row=0;row<4;row++){
     framedWindow(x,14+row*4.7,-18.65);
   }
 }
-for(let row=0;row<5;row++){
-  box(5.8,2.2,.6,7,10+row*4.7,-18.55,materials.glass,false);
-  box(6.15,.16,.34,7,11.18+row*4.7,-18.2,materials.frame,false);
-  box(6.15,.16,.34,7,8.82+row*4.7,-18.2,materials.frame,false);
-  box(.14,2.35,.34,7,10+row*4.7,-18.2,materials.frame,false);
-}
 
-for(let floor=0;floor<5;floor++) box(54,.24,.72,0,11.65+floor*4.7,-18.22,materials.frame,false);
+for(let floor=0;floor<5;floor++) box(54,.1,.18,0,11.65+floor*4.7,-18.75,materials.crimson,false);
 
 box(68,1.2,22,4,30.6,-31,materials.concreteDark,true);
 box(54,.75,2.8,0,30.1,-19.7,materials.concreteDark,true);
@@ -245,6 +246,20 @@ person(-8,10,0x263746);
 person(18,2,0x8e1a28);
 person(31,18,0x5a6848);
 
+const brickPaving=architecturalMaterial('brick','#89675b');
+for(let x=-54;x<=54;x+=18)for(let z=7;z<=39;z+=16)box(10,.04,8,x,.33,z,brickPaving,false);
+for(let i=0;i<22;i++)box(40,.035,.06,7,.35+i*.15,-4.2-i*.7,materials.concreteDark,false);
+for(let row=0;row<5;row++)for(let column=0;column<5;column++){
+  const angle=(column-2)*.16;
+  const pane=box(1.7,2.2,.22,7+Math.sin(angle)*12,10+row*4.7,-18.4+Math.cos(angle)*1.3,materials.glass,false);
+  pane.rotation.y=angle;
+  box(.075,2.3,.23,7+Math.sin(angle)*12,10+row*4.7,-18.18+Math.cos(angle)*1.3,materials.frame,false);
+}
+const signCanvas=document.createElement('canvas');signCanvas.width=512;signCanvas.height=128;
+const signContext=signCanvas.getContext('2d');signContext.fillStyle='#33352e';signContext.fillRect(0,0,512,128);signContext.fillStyle='#b6a566';signContext.font='64px serif';signContext.textAlign='center';signContext.fillText('图 书 馆',256,86);
+const signTexture=new THREE.CanvasTexture(signCanvas);signTexture.colorSpace=THREE.SRGBColorSpace;
+box(7.8,1.9,.18,7,7.25,-17.1,new THREE.MeshStandardMaterial({map:signTexture,roughness:.65}),false);
+
 console.assert(solidCount>160,'Detailed 3D model should contain more than 160 independent solids');
 document.getElementById('loading').classList.add('done');
 
@@ -262,7 +277,7 @@ document.getElementById('reset').addEventListener('click',()=>{
 let strongEdges=false;
 document.getElementById('structure').addEventListener('click',event=>{
   strongEdges=!strongEdges;
-  edges.forEach(line=>{line.material.opacity=strongEdges ? .72 : .15;});
+  edges.forEach(line=>{line.material.opacity=strongEdges ? .72 : 0;});
   event.currentTarget.textContent=strongEdges?'柔化结构线':'看清几何体';
 });
 
