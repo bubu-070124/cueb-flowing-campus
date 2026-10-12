@@ -2,134 +2,191 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const canvas=document.getElementById('scene');
-const loading=document.getElementById('loading');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.setSize(innerWidth,innerHeight);
 renderer.outputColorSpace=THREE.SRGBColorSpace;
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure=1.1;
+renderer.toneMappingExposure=1.05;
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 
 const scene=new THREE.Scene();
-scene.background=new THREE.Color(0x080507);
-scene.fog=new THREE.FogExp2(0x080507,.0042);
+scene.background=new THREE.Color(0x090507);
+scene.fog=new THREE.Fog(0x090507,145,260);
 
-const camera=new THREE.PerspectiveCamera(43,innerWidth/innerHeight,.1,600);
-camera.position.set(0,4,154);
+const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,.1,500);
+const homePosition=new THREE.Vector3(86,56,112);
+camera.position.copy(homePosition);
 const controls=new OrbitControls(camera,renderer.domElement);
-controls.target.set(0,-4,0);
+controls.target.set(0,10,-7);
 controls.enableDamping=true;
 controls.dampingFactor=.055;
 controls.enablePan=false;
-controls.minDistance=66;
-controls.maxDistance=235;
-controls.minPolarAngle=.4;
-controls.maxPolarAngle=2.3;
+controls.minDistance=58;
+controls.maxDistance=220;
+controls.minPolarAngle=.25;
+controls.maxPolarAngle=1.48;
 controls.autoRotate=true;
-controls.autoRotateSpeed=.55;
+controls.autoRotateSpeed=.45;
 controls.update();
 
-const world=new THREE.Group();
-scene.add(world);
+scene.add(new THREE.HemisphereLight(0xfff2dd,0x341018,2.1));
+const sun=new THREE.DirectionalLight(0xffead1,4.4);
+sun.position.set(-65,100,80);
+sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.left=-100;
+sun.shadow.camera.right=100;
+sun.shadow.camera.top=100;
+sun.shadow.camera.bottom=-100;
+scene.add(sun);
+const fill=new THREE.PointLight(0xb20e15,120,190,2);
+fill.position.set(55,20,38);
+scene.add(fill);
 
-scene.add(new THREE.HemisphereLight(0xfff1dc,0x23070d,1.65));
-const key=new THREE.DirectionalLight(0xffdbc1,2.8);
-key.position.set(-45,75,72);
-scene.add(key);
-const rim=new THREE.PointLight(0xb20e15,85,180,2);
-rim.position.set(56,8,-38);
-scene.add(rim);
+const model=new THREE.Group();
+model.rotation.y=-.08;
+scene.add(model);
 
-const baseMaterial=new THREE.MeshStandardMaterial({color:0x6f0914,roughness:.55,metalness:.25});
-const base=new THREE.Mesh(new THREE.CylinderGeometry(64,71,5.2,72),baseMaterial);
-base.position.y=-51;
-world.add(base);
-const baseTop=new THREE.Mesh(new THREE.CylinderGeometry(62.5,62.5,.5,72),new THREE.MeshStandardMaterial({color:0xc9ad84,roughness:.78,metalness:.04}));
-baseTop.position.y=-48.15;
-world.add(baseTop);
-const ring=new THREE.Mesh(new THREE.TorusGeometry(65.8,.42,10,96),new THREE.MeshBasicMaterial({color:0xe6c995}));
-ring.rotation.x=Math.PI/2;
-ring.position.y=-48.05;
-world.add(ring);
+const materials={
+  crimson:new THREE.MeshStandardMaterial({color:0x9f1727,roughness:.72,metalness:.03}),
+  deepRed:new THREE.MeshStandardMaterial({color:0x66101b,roughness:.78}),
+  concrete:new THREE.MeshStandardMaterial({color:0xd7c9ad,roughness:.9}),
+  concreteDark:new THREE.MeshStandardMaterial({color:0xa69579,roughness:.9}),
+  window:new THREE.MeshStandardMaterial({color:0x253845,roughness:.3,metalness:.38}),
+  glass:new THREE.MeshStandardMaterial({color:0x6d8b96,roughness:.24,metalness:.18}),
+  plaza:new THREE.MeshStandardMaterial({color:0xb6a48a,roughness:.96}),
+  soil:new THREE.MeshStandardMaterial({color:0x4b3328,roughness:1}),
+  trunk:new THREE.MeshStandardMaterial({color:0x5b3d28,roughness:1}),
+  leaf:new THREE.MeshStandardMaterial({color:0x48662d,roughness:.95}),
+  leafLight:new THREE.MeshStandardMaterial({color:0x708141,roughness:.95}),
+  base:new THREE.MeshStandardMaterial({color:0x720b17,roughness:.48,metalness:.24})
+};
+const edges=[];
+let solidCount=0;
 
-function depthForPixel(r,g,b,u,v){
-  const lum=.299*r+.587*g+.114*b;
-  const green=Math.max(0,g-Math.max(r,b));
-  let depth=-12+(v-.48)*27;
-  if(v<.34) depth-=10+(.34-v)*34;
-  if(v>.58) depth+=(v-.58)*47;
-  if((u<.24||u>.78)&&green>.035) depth+=green*34+4;
-  depth+=(.48-lum)*4.2;
-  return depth;
-}
-
-function buildDiorama(image){
-  const sampleWidth=260;
-  const sampleHeight=Math.round(sampleWidth*image.naturalHeight/image.naturalWidth);
-  const sampler=document.createElement('canvas');
-  sampler.width=sampleWidth;
-  sampler.height=sampleHeight;
-  const context=sampler.getContext('2d',{willReadFrequently:true});
-  context.drawImage(image,0,0,sampleWidth,sampleHeight);
-  const pixels=context.getImageData(0,0,sampleWidth,sampleHeight).data;
-  const count=sampleWidth*sampleHeight;
-  const positions=new Float32Array(count*3);
-  const colors=new Float32Array(count*3);
-  const worldWidth=118;
-  const worldHeight=worldWidth*sampleHeight/sampleWidth;
-  let target=0;
-  for(let y=0;y<sampleHeight;y++){
-    const v=y/(sampleHeight-1);
-    for(let x=0;x<sampleWidth;x++){
-      const u=x/(sampleWidth-1);
-      const source=(y*sampleWidth+x)*4;
-      const r=pixels[source]/255;
-      const g=pixels[source+1]/255;
-      const b=pixels[source+2]/255;
-      const edgeFade=Math.min(1,Math.min(u,1-u,v,1-v)*25);
-      const jitter=(Math.sin(x*12.9898+y*78.233)*43758.5453)%1;
-      positions[target]=(u-.5)*worldWidth+(jitter-.5)*.22;
-      positions[target+1]=(.5-v)*worldHeight-3;
-      positions[target+2]=depthForPixel(r,g,b,u,v)+(jitter-.5)*.55;
-      colors[target]=r*edgeFade;
-      colors[target+1]=g*edgeFade;
-      colors[target+2]=b*edgeFade;
-      target+=3;
-    }
+function finishMesh(mesh,outline=true){
+  mesh.castShadow=true;
+  mesh.receiveShadow=true;
+  model.add(mesh);
+  solidCount++;
+  if(outline){
+    const line=new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry,28),new THREE.LineBasicMaterial({color:0x2a1415,transparent:true,opacity:.32}));
+    line.position.copy(mesh.position);
+    line.rotation.copy(mesh.rotation);
+    line.scale.copy(mesh.scale);
+    model.add(line);
+    edges.push(line);
   }
-  const geometry=new THREE.BufferGeometry();
-  geometry.setAttribute('position',new THREE.BufferAttribute(positions,3));
-  geometry.setAttribute('color',new THREE.BufferAttribute(colors,3));
-  geometry.computeBoundingSphere();
-  const material=new THREE.PointsMaterial({size:.72,sizeAttenuation:true,vertexColors:true,transparent:false,fog:true});
-  const points=new THREE.Points(geometry,material);
-  points.position.y=2;
-  world.add(points);
-
-  const shadow=new THREE.Mesh(new THREE.CircleGeometry(53,72),new THREE.MeshBasicMaterial({color:0x160208,transparent:true,opacity:.56,depthWrite:false}));
-  shadow.rotation.x=-Math.PI/2;
-  shadow.position.set(0,-47.7,3);
-  world.add(shadow);
-  loading.classList.add('done');
+  return mesh;
 }
 
-const image=document.getElementById('source-photo');
-if(image.complete&&image.naturalWidth) buildDiorama(image);
-else{
-  image.addEventListener('load',()=>buildDiorama(image),{once:true});
-  image.addEventListener('error',()=>{loading.textContent='照片加载失败，请刷新重试';},{once:true});
+function box(w,h,d,x,y,z,material,outline=true){
+  const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);
+  mesh.position.set(x,y,z);
+  return finishMesh(mesh,outline);
 }
+
+function cylinder(radius,height,x,y,z,material,segments=24){
+  const mesh=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,height,segments),material);
+  mesh.position.set(x,y,z);
+  return finishMesh(mesh,true);
+}
+
+function addTree(x,z,height=15,scale=1){
+  cylinder(.62*scale,height,x,height/2,z,materials.trunk,12);
+  const foliage=[[0,0,0],[2.7,0,-.5],[-2.5,.2,.5],[.4,2.7,.3]];
+  foliage.forEach(([dx,dy,dz],index)=>{
+    const mesh=new THREE.Mesh(new THREE.IcosahedronGeometry((3.7+(index%2)*.55)*scale,1),index===3?materials.leafLight:materials.leaf);
+    mesh.position.set(x+dx*scale,height-1.3+dy*scale,z+dz*scale);
+    finishMesh(mesh,false);
+  });
+}
+
+const plinth=new THREE.Mesh(new THREE.CylinderGeometry(73,78,5.5,72),materials.base);
+plinth.position.y=-3.6;
+finishMesh(plinth,true);
+box(132,1.1,94,0,-.25,-1,materials.plaza,true);
+const grid=new THREE.GridHelper(126,18,0x846f5d,0x846f5d);
+grid.position.set(0,.32,4);
+grid.material.transparent=true;
+grid.material.opacity=.34;
+model.add(grid);
+
+// shortcut: photo-matched concept massing, replace with measured/multi-view capture for survey accuracy.
+box(66,30,20,4,15,-31,materials.concrete,true);
+box(54,20,2,0,20,-20,materials.crimson,true);
+box(11,33,22,7,16.5,-30,materials.concreteDark,true);
+box(14,6,3,7,4,-18.8,materials.deepRed,true);
+box(5,5.2,1,3.8,4,-17.25,materials.glass,false);
+box(5,5.2,1,10.2,4,-17.25,materials.glass,false);
+
+cylinder(13,28,-45,14,-33,materials.concrete,32);
+box(22,24,22,-31,12,-32,materials.concrete,true);
+box(8,22,2,-45,14,-19.7,materials.glass,true);
+
+for(let row=0;row<4;row++){
+  for(let column=0;column<8;column++){
+    const x=-23+column*6.5;
+    if(x>2&&x<12) continue;
+    box(3.7,2.2,.55,x,14+row*4.7,-18.65,materials.window,false);
+  }
+}
+for(let row=0;row<5;row++) box(5.8,2.2,.6,7,10+row*4.7,-18.55,materials.glass,false);
+
+box(68,1.2,22,4,30.6,-31,materials.concreteDark,true);
+box(54,.75,2.8,0,30.1,-19.7,materials.concreteDark,true);
+for(let row=0;row<3;row++){
+  box(.55,2.2,11,37.3,14+row*5,-31,materials.window,false);
+  box(.55,2.2,11,-29.3,14+row*5,-31,materials.window,false);
+}
+
+for(let step=0;step<8;step++){
+  const height=.45*(step+1);
+  box(45-step*.8,height,2.35,7,height/2,-4.3-step*2.05,materials.concrete,true);
+}
+
+box(31,1.8,8,-42,.9,-4,materials.concreteDark,true);
+box(29,1.35,6,-42,1.65,-4,materials.soil,false);
+box(29,1.8,8,44,.9,-7,materials.concreteDark,true);
+box(27,1.35,6,44,1.65,-7,materials.soil,false);
+addTree(-51,-3,16,1.05);
+addTree(-38,-5,14,.9);
+addTree(39,-8,17,1.08);
+addTree(51,-6,15,.92);
+
+function person(x,z,color){
+  const body=new THREE.Mesh(new THREE.CapsuleGeometry(.45,1.7,4,8),new THREE.MeshStandardMaterial({color,roughness:.85}));
+  body.position.set(x,1.55,z);
+  finishMesh(body,false);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.43,12,8),new THREE.MeshStandardMaterial({color:0xd3a682,roughness:.9}));
+  head.position.set(x,3.25,z);
+  finishMesh(head,false);
+}
+person(-8,10,0x263746);
+person(18,2,0x8e1a28);
+person(31,18,0x5a6848);
+
+console.assert(solidCount>70,'3D block model should contain more than 70 independent solids');
+document.getElementById('loading').classList.add('done');
 
 let resumeTimer=0;
 controls.addEventListener('start',()=>{controls.autoRotate=false;clearTimeout(resumeTimer);});
 controls.addEventListener('end',()=>{resumeTimer=setTimeout(()=>{controls.autoRotate=true;},2600);});
 document.getElementById('reset').addEventListener('click',()=>{
   controls.autoRotate=false;
-  camera.position.set(0,4,154);
-  controls.target.set(0,-4,0);
+  camera.position.copy(homePosition);
+  controls.target.set(0,10,-7);
   controls.update();
   clearTimeout(resumeTimer);
   resumeTimer=setTimeout(()=>{controls.autoRotate=true;},1800);
+});
+let strongEdges=false;
+document.getElementById('structure').addEventListener('click',event=>{
+  strongEdges=!strongEdges;
+  edges.forEach(line=>{line.material.opacity=strongEdges ? .82 : .32;});
+  event.currentTarget.textContent=strongEdges?'柔化结构线':'看清几何体';
 });
 
 addEventListener('resize',()=>{
