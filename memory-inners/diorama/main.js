@@ -2,18 +2,17 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const canvas=document.getElementById('scene');
-const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:'high-performance'});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.setSize(innerWidth,innerHeight);
 renderer.outputColorSpace=THREE.SRGBColorSpace;
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure=1.05;
+renderer.toneMappingExposure=.98;
 renderer.shadowMap.enabled=true;
 renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 
 const scene=new THREE.Scene();
-scene.background=new THREE.Color(0x090507);
-scene.fog=new THREE.Fog(0x090507,145,260);
+scene.fog=new THREE.Fog(0xa8bdc0,150,280);
 
 const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,.1,500);
 const homePosition=new THREE.Vector3(86,56,112);
@@ -31,7 +30,7 @@ controls.autoRotate=true;
 controls.autoRotateSpeed=.45;
 controls.update();
 
-scene.add(new THREE.HemisphereLight(0xfff2dd,0x341018,2.1));
+scene.add(new THREE.HemisphereLight(0xe8f5ff,0x5c4937,2.25));
 const sun=new THREE.DirectionalLight(0xffead1,4.4);
 sun.position.set(-65,100,80);
 sun.castShadow=true;
@@ -49,19 +48,52 @@ const model=new THREE.Group();
 model.rotation.y=-.08;
 scene.add(model);
 
+function surfaceTexture(base,detail,grid=0){
+  const size=512;
+  const surface=document.createElement('canvas');
+  surface.width=surface.height=size;
+  const context=surface.getContext('2d');
+  context.fillStyle=base;
+  context.fillRect(0,0,size,size);
+  context.fillStyle=detail;
+  for(let i=0;i<3800;i++){
+    const alpha=.025+Math.random()*.07;
+    context.globalAlpha=alpha;
+    const radius=.3+Math.random()*1.7;
+    context.fillRect(Math.random()*size,Math.random()*size,radius,radius);
+  }
+  context.globalAlpha=grid?.22:1;
+  if(grid){
+    context.strokeStyle=detail;
+    context.lineWidth=1;
+    for(let p=0;p<=size;p+=grid){context.beginPath();context.moveTo(p,0);context.lineTo(p,size);context.stroke();context.beginPath();context.moveTo(0,p);context.lineTo(size,p);context.stroke();}
+  }
+  context.globalAlpha=1;
+  const texture=new THREE.CanvasTexture(surface);
+  texture.colorSpace=THREE.SRGBColorSpace;
+  texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
+  texture.repeat.set(grid?3:2,grid?3:2);
+  texture.anisotropy=renderer.capabilities.getMaxAnisotropy();
+  return texture;
+}
+
+const wallTexture=surfaceTexture('#d9cbb6','#7c6a57');
+const redTexture=surfaceTexture('#9e1829','#4b0711');
+const pavingTexture=surfaceTexture('#b8aa96','#76695a',64);
+const barkTexture=surfaceTexture('#64442e','#27180f');
 const materials={
-  crimson:new THREE.MeshStandardMaterial({color:0x9f1727,roughness:.72,metalness:.03}),
-  deepRed:new THREE.MeshStandardMaterial({color:0x66101b,roughness:.78}),
-  concrete:new THREE.MeshStandardMaterial({color:0xd7c9ad,roughness:.9}),
-  concreteDark:new THREE.MeshStandardMaterial({color:0xa69579,roughness:.9}),
-  window:new THREE.MeshStandardMaterial({color:0x253845,roughness:.3,metalness:.38}),
-  glass:new THREE.MeshStandardMaterial({color:0x6d8b96,roughness:.24,metalness:.18}),
-  plaza:new THREE.MeshStandardMaterial({color:0xb6a48a,roughness:.96}),
-  soil:new THREE.MeshStandardMaterial({color:0x4b3328,roughness:1}),
-  trunk:new THREE.MeshStandardMaterial({color:0x5b3d28,roughness:1}),
-  leaf:new THREE.MeshStandardMaterial({color:0x48662d,roughness:.95}),
-  leafLight:new THREE.MeshStandardMaterial({color:0x708141,roughness:.95}),
-  base:new THREE.MeshStandardMaterial({color:0x720b17,roughness:.48,metalness:.24})
+  crimson:new THREE.MeshStandardMaterial({map:redTexture,color:0xffffff,roughness:.78,metalness:.02}),
+  deepRed:new THREE.MeshStandardMaterial({color:0x67131d,roughness:.82}),
+  concrete:new THREE.MeshStandardMaterial({map:wallTexture,color:0xfff4df,roughness:.94}),
+  concreteDark:new THREE.MeshStandardMaterial({map:wallTexture,color:0xb5a184,roughness:.94}),
+  window:new THREE.MeshPhysicalMaterial({color:0x294454,roughness:.12,metalness:.14,clearcoat:1,clearcoatRoughness:.12,emissive:0x10252d,emissiveIntensity:.28}),
+  glass:new THREE.MeshPhysicalMaterial({color:0x779cab,roughness:.08,metalness:.08,clearcoat:1,clearcoatRoughness:.08,emissive:0x213b44,emissiveIntensity:.18}),
+  plaza:new THREE.MeshStandardMaterial({map:pavingTexture,color:0xf0e4ce,roughness:.96}),
+  soil:new THREE.MeshStandardMaterial({color:0x493125,roughness:1}),
+  trunk:new THREE.MeshStandardMaterial({map:barkTexture,color:0x8a6246,roughness:1}),
+  leaf:new THREE.MeshStandardMaterial({color:0x44672f,roughness:.88}),
+  leafLight:new THREE.MeshStandardMaterial({color:0x718e49,roughness:.86}),
+  base:new THREE.MeshStandardMaterial({color:0x5e5850,roughness:.88,metalness:.04})
 };
 const edges=[];
 let solidCount=0;
@@ -72,7 +104,7 @@ function finishMesh(mesh,outline=true){
   model.add(mesh);
   solidCount++;
   if(outline){
-    const line=new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry,28),new THREE.LineBasicMaterial({color:0x2a1415,transparent:true,opacity:.32}));
+    const line=new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry,28),new THREE.LineBasicMaterial({color:0x2a2522,transparent:true,opacity:.15}));
     line.position.copy(mesh.position);
     line.rotation.copy(mesh.rotation);
     line.scale.copy(mesh.scale);
@@ -88,17 +120,19 @@ function box(w,h,d,x,y,z,material,outline=true){
   return finishMesh(mesh,outline);
 }
 
-function cylinder(radius,height,x,y,z,material,segments=24){
+function cylinder(radius,height,x,y,z,material,segments=32){
   const mesh=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,height,segments),material);
   mesh.position.set(x,y,z);
   return finishMesh(mesh,true);
 }
 
 function addTree(x,z,height=15,scale=1){
-  cylinder(.62*scale,height,x,height/2,z,materials.trunk,12);
-  const foliage=[[0,0,0],[2.7,0,-.5],[-2.5,.2,.5],[.4,2.7,.3]];
+  cylinder(.62*scale,height,x,height/2,z,materials.trunk,20);
+  const foliage=[[0,0,0],[2.6,0,-.4],[-2.4,.2,.5],[.4,2.6,.3],[1.1,1.2,1.8]];
   foliage.forEach(([dx,dy,dz],index)=>{
-    const mesh=new THREE.Mesh(new THREE.IcosahedronGeometry((3.7+(index%2)*.55)*scale,1),index===3?materials.leafLight:materials.leaf);
+    const radius=(3.55+(index%2)*.5)*scale;
+    const mesh=new THREE.Mesh(new THREE.SphereGeometry(radius,18,12),index===3?materials.leafLight:materials.leaf);
+    mesh.scale.set(1,1.08,.94);
     mesh.position.set(x+dx*scale,height-1.3+dy*scale,z+dz*scale);
     finishMesh(mesh,false);
   });
@@ -111,7 +145,7 @@ box(132,1.1,94,0,-.25,-1,materials.plaza,true);
 const grid=new THREE.GridHelper(126,18,0x846f5d,0x846f5d);
 grid.position.set(0,.32,4);
 grid.material.transparent=true;
-grid.material.opacity=.34;
+grid.material.opacity=.16;
 model.add(grid);
 
 // shortcut: photo-matched concept massing, replace with measured/multi-view capture for survey accuracy.
@@ -169,7 +203,33 @@ person(18,2,0x8e1a28);
 person(31,18,0x5a6848);
 
 console.assert(solidCount>70,'3D block model should contain more than 70 independent solids');
-document.getElementById('loading').classList.add('done');
+
+function addPhotoFacade(image){
+  const crop=document.createElement('canvas');
+  crop.width=1100;
+  crop.height=500;
+  const context=crop.getContext('2d');
+  const sx=image.naturalWidth*.335;
+  const sy=image.naturalHeight*.315;
+  const sw=image.naturalWidth*.48;
+  const sh=image.naturalHeight*.29;
+  context.drawImage(image,sx,sy,sw,sh,0,0,crop.width,crop.height);
+  const texture=new THREE.CanvasTexture(crop);
+  texture.colorSpace=THREE.SRGBColorSpace;
+  texture.anisotropy=renderer.capabilities.getMaxAnisotropy();
+  const facade=new THREE.Mesh(new THREE.PlaneGeometry(64,29),new THREE.MeshStandardMaterial({map:texture,roughness:.82,metalness:0}));
+  facade.position.set(4,15,-18.18);
+  facade.receiveShadow=true;
+  model.add(facade);
+}
+
+const sourcePhoto=document.getElementById('source-photo');
+function finishLoading(){document.getElementById('loading').classList.add('done');}
+if(sourcePhoto.complete&&sourcePhoto.naturalWidth){addPhotoFacade(sourcePhoto);finishLoading();}
+else{
+  sourcePhoto.addEventListener('load',()=>{addPhotoFacade(sourcePhoto);finishLoading();},{once:true});
+  sourcePhoto.addEventListener('error',finishLoading,{once:true});
+}
 
 let resumeTimer=0;
 controls.addEventListener('start',()=>{controls.autoRotate=false;clearTimeout(resumeTimer);});
@@ -185,7 +245,7 @@ document.getElementById('reset').addEventListener('click',()=>{
 let strongEdges=false;
 document.getElementById('structure').addEventListener('click',event=>{
   strongEdges=!strongEdges;
-  edges.forEach(line=>{line.material.opacity=strongEdges ? .82 : .32;});
+  edges.forEach(line=>{line.material.opacity=strongEdges ? .72 : .15;});
   event.currentTarget.textContent=strongEdges?'柔化结构线':'看清几何体';
 });
 
