@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+  <link rel="icon" href="data:,">
+  <title>图书馆前 · 3D 微缩场景</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}html,body{width:100%;height:100%;overflow:hidden;background:#080507;font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif;color:#fff}body{touch-action:none}canvas{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:grab}canvas:active{cursor:grabbing}.wash{position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 42%,transparent 0 33%,#09040733 58%,#050204d9 100%)}.copy{position:fixed;z-index:2;left:clamp(22px,4vw,54px);top:clamp(22px,4vw,48px);pointer-events:none}.eyebrow{font:500 9px/1.2 Georgia,serif;letter-spacing:.28em;color:#d9b77cbf}.copy h1{margin-top:9px;font:300 clamp(17px,2vw,25px)/1.3 Georgia,"Microsoft YaHei";letter-spacing:.16em;text-shadow:0 4px 20px #000}.copy p{margin-top:8px;font-size:10px;letter-spacing:.14em;color:#f4ede0a3}.badge{position:fixed;z-index:2;right:clamp(22px,4vw,54px);top:clamp(22px,4vw,48px);padding:7px 11px;border:1px solid #f7eee34a;border-radius:999px;background:#39081180;font-size:9px;letter-spacing:.15em;color:#f9ede7c9;backdrop-filter:blur(8px)}.controls{position:fixed;z-index:3;left:50%;bottom:clamp(20px,4vh,42px);transform:translateX(-50%);display:flex;align-items:center;gap:9px;padding:7px;border:1px solid #fff2;border-radius:999px;background:#1b070cb0;backdrop-filter:blur(12px)}.controls span{padding:0 8px;font-size:10px;letter-spacing:.12em;color:#f7eee4a6;white-space:nowrap}.controls button{border:1px solid #fff3;border-radius:999px;padding:8px 13px;background:#a80f1cd9;color:#fff;font:500 10px/1 "Microsoft YaHei";letter-spacing:.1em;cursor:pointer}.loading{position:fixed;z-index:4;inset:0;display:grid;place-items:center;background:#080507;color:#f3e7d3a8;font-size:10px;letter-spacing:.2em}.loading.done{display:none}@media(max-width:640px){.copy p{display:none}.badge{top:auto;right:auto;left:22px;bottom:76px}.controls span{display:none}}
+  </style>
+  <script type="importmap">{"imports":{"three":"../../vendor/three.module.min.js","three/addons/":"../../vendor/addons/"}}</script>
+</head>
+<body>
+  <img id="source-photo" src="../../assets/optimized/library.webp" alt="" hidden>
+  <canvas id="scene"></canvas>
+  <div class="wash" aria-hidden="true"></div>
+  <header class="copy"><div class="eyebrow">CUEB · SINGLE IMAGE DIORAMA</div><h1>「图书馆前」</h1><p>真实照片生成的 3D 点云微缩场景</p></header>
+  <div class="badge">360° 环绕实验</div>
+  <div class="controls"><span>拖动旋转 · 滚轮 / 双指缩放</span><button id="reset" type="button">回到正面</button></div>
+  <div class="loading" id="loading">正在展开这一帧空间</div>
+  <script type="module" src="./main.js?v=20261012-1"></script>
+</body>
+</html>

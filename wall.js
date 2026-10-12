@@ -1,7 +1,7 @@
 (function(){
   const memories=[
     {id:'military',title:'初见 · 军训场',note:'从陌生走向同频',src:'assets/thumbs/military.webp',ratio:.75,coverZoom:1.13,memoryPath:'memory-inners/01-military/'},
-    {id:'library',title:'进入 · 图书馆前',note:'一座楼，许多人的一天',src:'assets/thumbs/library.webp',ratio:1.33,memoryPath:'memory-inners/generic/?scene=library'},
+    {id:'library',title:'进入 · 图书馆前',note:'一座楼，许多人的一天',src:'assets/thumbs/library.webp',ratio:1.33,diorama:true,memoryPath:'memory-inners/diorama/'},
     {id:'video-learning-building',title:'仰望 · 博学楼',note:'镜头向上，时间从楼面掠过',src:'assets/thumbs/campus-memory-2-poster.webp',ratio:.5625,video:true,memoryPath:'memory-inners/generic/?scene=video-learning-building'},
     {id:'stairs-a',title:'经过 · 楼梯间',note:'阳光沿着扶手向上',src:'assets/thumbs/stairs-wide.webp',ratio:.81,memoryPath:'memory-inners/04-stairs-light/'},
     {id:'stairs-sun',title:'下楼 · 午间光影',note:'脚步穿过一格一格的阳光',src:'assets/thumbs/stairs-sun.webp',ratio:.75,memoryPath:'memory-inners/generic/?scene=stairs-sun'},
@@ -38,7 +38,7 @@
     Object.entries({x:`${position.x}px`,y:position.y,w:`${position.w}px`,h:`${position.h}px`,tilt:position.tilt,z:position.z}).forEach(([key,value])=>el.style.setProperty(`--${key}`,value));
     const coverStyle=item.coverZoom?` style="transform:scale(${item.coverZoom});transform-origin:left top"`:'';
     const visual=item.blank?'<div class="frame"><div><div class="plus">+</div><div class="invite">留下你的瞬间<br>留下你的校园回忆</div></div></div>':item.demo&&!item.src?'<div class="frame"><div class="demo-photo"></div></div>':`<div class="frame"><img src="${item.src}" alt="${item.title}" loading="lazy" decoding="async" draggable="false"${coverStyle}></div>`;
-    el.innerHTML=`${item.memoryPath?`<span class="tag">${item.video?'动态粒子':'触摸进入'}</span>`:''}${visual}<div class="meta"><b>${item.title}</b><span>${item.note}</span></div>`;el._memory=item;return el;
+    el.innerHTML=`${item.memoryPath?`<span class="tag">${item.diorama?'360°微缩':item.video?'动态粒子':'触摸进入'}</span>`:''}${visual}<div class="meta"><b>${item.title}</b><span>${item.note}</span></div>`;el._memory=item;return el;
   }
   function section(items,onSelect){
     const el=document.createElement('div');el.className='wall-section';
