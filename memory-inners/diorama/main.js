@@ -88,6 +88,8 @@ const materials={
   concreteDark:new THREE.MeshStandardMaterial({map:wallTexture,color:0xb5a184,roughness:.94}),
   window:new THREE.MeshPhysicalMaterial({color:0x294454,roughness:.12,metalness:.14,clearcoat:1,clearcoatRoughness:.12,emissive:0x10252d,emissiveIntensity:.28}),
   glass:new THREE.MeshPhysicalMaterial({color:0x779cab,roughness:.08,metalness:.08,clearcoat:1,clearcoatRoughness:.08,emissive:0x213b44,emissiveIntensity:.18}),
+  frame:new THREE.MeshStandardMaterial({color:0xe7dfd0,roughness:.48,metalness:.32}),
+  metal:new THREE.MeshStandardMaterial({color:0x5a5e5d,roughness:.28,metalness:.76}),
   plaza:new THREE.MeshStandardMaterial({map:pavingTexture,color:0xf0e4ce,roughness:.96}),
   soil:new THREE.MeshStandardMaterial({color:0x493125,roughness:1}),
   trunk:new THREE.MeshStandardMaterial({map:barkTexture,color:0x8a6246,roughness:1}),
@@ -126,11 +128,28 @@ function cylinder(radius,height,x,y,z,material,segments=32){
   return finishMesh(mesh,true);
 }
 
+function beamBetween(start,end,radius,material){
+  const direction=new THREE.Vector3().subVectors(end,start);
+  const mesh=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,direction.length(),12),material);
+  mesh.position.copy(start).add(end).multiplyScalar(.5);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),direction.clone().normalize());
+  return finishMesh(mesh,false);
+}
+
+function framedWindow(x,y,z,w=3.7,h=2.2){
+  box(w,h,.55,x,y,z,materials.window,false);
+  box(w+.35,.16,.32,x,y+h/2+.08,z+.34,materials.frame,false);
+  box(w+.35,.16,.32,x,y-h/2-.08,z+.34,materials.frame,false);
+  box(.16,h+.16,.32,x-w/2-.08,y,z+.34,materials.frame,false);
+  box(.16,h+.16,.32,x+w/2+.08,y,z+.34,materials.frame,false);
+  box(.11,h,.36,x,y,z+.37,materials.frame,false);
+}
+
 function addTree(x,z,height=15,scale=1){
   cylinder(.62*scale,height,x,height/2,z,materials.trunk,20);
-  const foliage=[[0,0,0],[2.6,0,-.4],[-2.4,.2,.5],[.4,2.6,.3],[1.1,1.2,1.8]];
+  const foliage=[[0,0,0],[2.5,0,-.4],[-2.3,.2,.5],[.4,2.4,.3],[1.1,1.1,1.8],[-1.2,1.2,-1.7],[2,1.5,1.1],[-2,1.6,1.2]];
   foliage.forEach(([dx,dy,dz],index)=>{
-    const radius=(3.55+(index%2)*.5)*scale;
+    const radius=(index<4?3.2:2.45+(index%2)*.35)*scale;
     const mesh=new THREE.Mesh(new THREE.SphereGeometry(radius,18,12),index===3?materials.leafLight:materials.leaf);
     mesh.scale.set(1,1.08,.94);
     mesh.position.set(x+dx*scale,height-1.3+dy*scale,z+dz*scale);
@@ -164,10 +183,17 @@ for(let row=0;row<4;row++){
   for(let column=0;column<8;column++){
     const x=-23+column*6.5;
     if(x>2&&x<12) continue;
-    box(3.7,2.2,.55,x,14+row*4.7,-18.65,materials.window,false);
+    framedWindow(x,14+row*4.7,-18.65);
   }
 }
-for(let row=0;row<5;row++) box(5.8,2.2,.6,7,10+row*4.7,-18.55,materials.glass,false);
+for(let row=0;row<5;row++){
+  box(5.8,2.2,.6,7,10+row*4.7,-18.55,materials.glass,false);
+  box(6.15,.16,.34,7,11.18+row*4.7,-18.2,materials.frame,false);
+  box(6.15,.16,.34,7,8.82+row*4.7,-18.2,materials.frame,false);
+  box(.14,2.35,.34,7,10+row*4.7,-18.2,materials.frame,false);
+}
+
+for(let floor=0;floor<5;floor++) box(54,.24,.72,0,11.65+floor*4.7,-18.22,materials.frame,false);
 
 box(68,1.2,22,4,30.6,-31,materials.concreteDark,true);
 box(54,.75,2.8,0,30.1,-19.7,materials.concreteDark,true);
@@ -180,6 +206,23 @@ for(let step=0;step<8;step++){
   const height=.45*(step+1);
   box(45-step*.8,height,2.35,7,height/2,-4.3-step*2.05,materials.concrete,true);
 }
+
+const railLeftBottom=new THREE.Vector3(-15,1.1,-3.2);
+const railLeftTop=new THREE.Vector3(-15,5.1,-20.2);
+const railRightBottom=new THREE.Vector3(29,1.1,-3.2);
+const railRightTop=new THREE.Vector3(29,5.1,-20.2);
+beamBetween(railLeftBottom,railLeftTop,.11,materials.metal);
+beamBetween(railRightBottom,railRightTop,.11,materials.metal);
+for(let i=0;i<5;i++){
+  const t=i/4;
+  const z=THREE.MathUtils.lerp(-3.2,-20.2,t);
+  const y=THREE.MathUtils.lerp(.2,4.2,t);
+  beamBetween(new THREE.Vector3(-15,y,z),new THREE.Vector3(-15,y+1.05,z),.08,materials.metal);
+  beamBetween(new THREE.Vector3(29,y,z),new THREE.Vector3(29,y+1.05,z),.08,materials.metal);
+}
+
+box(8,2.4,5,-5,32.3,-32,materials.concreteDark,true);
+box(6,1.6,4,20,31.9,-30,materials.concreteDark,true);
 
 box(31,1.8,8,-42,.9,-4,materials.concreteDark,true);
 box(29,1.35,6,-42,1.65,-4,materials.soil,false);
@@ -202,34 +245,8 @@ person(-8,10,0x263746);
 person(18,2,0x8e1a28);
 person(31,18,0x5a6848);
 
-console.assert(solidCount>70,'3D block model should contain more than 70 independent solids');
-
-function addPhotoFacade(image){
-  const crop=document.createElement('canvas');
-  crop.width=1100;
-  crop.height=500;
-  const context=crop.getContext('2d');
-  const sx=image.naturalWidth*.335;
-  const sy=image.naturalHeight*.315;
-  const sw=image.naturalWidth*.48;
-  const sh=image.naturalHeight*.29;
-  context.drawImage(image,sx,sy,sw,sh,0,0,crop.width,crop.height);
-  const texture=new THREE.CanvasTexture(crop);
-  texture.colorSpace=THREE.SRGBColorSpace;
-  texture.anisotropy=renderer.capabilities.getMaxAnisotropy();
-  const facade=new THREE.Mesh(new THREE.PlaneGeometry(64,29),new THREE.MeshStandardMaterial({map:texture,roughness:.82,metalness:0}));
-  facade.position.set(4,15,-18.18);
-  facade.receiveShadow=true;
-  model.add(facade);
-}
-
-const sourcePhoto=document.getElementById('source-photo');
-function finishLoading(){document.getElementById('loading').classList.add('done');}
-if(sourcePhoto.complete&&sourcePhoto.naturalWidth){addPhotoFacade(sourcePhoto);finishLoading();}
-else{
-  sourcePhoto.addEventListener('load',()=>{addPhotoFacade(sourcePhoto);finishLoading();},{once:true});
-  sourcePhoto.addEventListener('error',finishLoading,{once:true});
-}
+console.assert(solidCount>160,'Detailed 3D model should contain more than 160 independent solids');
+document.getElementById('loading').classList.add('done');
 
 let resumeTimer=0;
 controls.addEventListener('start',()=>{controls.autoRotate=false;clearTimeout(resumeTimer);});
