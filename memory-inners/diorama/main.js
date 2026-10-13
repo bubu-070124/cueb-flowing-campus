@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { architecturalMaterial, addSkyEnvironment, detailedTree } from './materials.js';
+import { revealModel } from './reveal.js?v=20261012-6';
 
 const canvas=document.getElementById('scene');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:'high-performance'});
@@ -294,3 +295,5 @@ function animate(){
   renderer.render(scene,camera);
 }
 animate();
+// Reveal only after WebGL has rendered; the photograph stays a separate transition layer.
+requestAnimationFrame(()=>requestAnimationFrame(()=>revealModel()));
